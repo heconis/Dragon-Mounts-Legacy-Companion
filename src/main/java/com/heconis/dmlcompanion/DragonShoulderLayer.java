@@ -54,7 +54,7 @@ public final class DragonShoulderLayer extends RenderLayer<AbstractClientPlayer,
         try {
             // Keep the parrot's shoulder anchor and tuck the dragon down and behind it.
             double crouchOffset = player.isCrouching() ? 0.2 : 0;
-            poses.translate(-0.4, crouchOffset + 0.18, 0.24);
+            poses.translate(-0.4, crouchOffset + 0.22, 0.30);
             // Undo the player model's axis flip so the dragon renderer receives an upright coordinate system.
             poses.scale(-1, -1, 1);
             poses.mulPose(Axis.XP.rotationDegrees(-35));

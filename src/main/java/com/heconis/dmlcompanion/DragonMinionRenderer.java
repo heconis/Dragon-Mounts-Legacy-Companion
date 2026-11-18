@@ -66,6 +66,10 @@ public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
         var dragon = preview.dragon;
         dragon.setFlying(!sitting);
         dragon.setInSittingPose(sitting);
+        // DML uses the entity pitch for the head, independently of the shoulder layer's forward lean.
+        float lookPitch = sitting ? -40 : 0;
+        dragon.setXRot(lookPitch);
+        dragon.xRotO = lookPitch;
         dragon.setYRot(yaw);
         dragon.yBodyRotO = dragon.yBodyRot = yaw;
         dragon.yHeadRotO = dragon.yHeadRot = yaw;
