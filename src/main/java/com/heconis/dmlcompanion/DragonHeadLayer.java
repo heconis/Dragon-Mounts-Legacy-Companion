@@ -55,9 +55,10 @@ public final class DragonHeadLayer extends RenderLayer<AbstractClientPlayer, Pla
         poses.pushPose();
         try {
             var head = getParentModel().head;
-            float clearance = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 0.75f : 2f;
+            // The seated model's contact point sits above its render origin. Lower that origin for both surfaces.
+            float perchHeight = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 7.15f : 8.4f;
             var headRotation = new Quaternionf().rotationZYX(head.zRot, head.yRot, head.xRot);
-            var crown = new Vector3f(0, -(8 + clearance) / 16, 0).rotate(headRotation);
+            var crown = new Vector3f(0, -perchHeight / 16, 0).rotate(headRotation);
             // Keep the torso centering offset in the horizontal plane as the dragon tilts at the crown.
             crown.add(new Vector3f(0, 0, 0.06f).rotateY(head.yRot));
             poses.translate(head.x / 16 + crown.x, head.y / 16 + crown.y, head.z / 16 + crown.z);
