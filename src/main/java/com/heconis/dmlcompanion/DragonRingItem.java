@@ -1,17 +1,22 @@
 package com.heconis.dmlcompanion;
 
 import com.github.kay9.dragonmounts.dragon.TameableDragon;
+import com.github.kay9.dragonmounts.dragon.breed.DragonBreed;
 import com.google.gson.JsonParseException;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,6 +59,50 @@ final class DragonRingItem extends Item implements ICurioItem {
         tag.putUUID(OWNER_ID, ownerId);
         tag.putString(DRAGON_NAME, Component.Serializer.toJson(dragon.getName()));
         return stack;
+    }
+
+    @Override
+    public void inventoryTick(ItemStack stack, Level level, Entity holder, int slot, boolean selected) {
+        // Curios also invokes inventoryTick for equipment and syncs changed ItemStack tags.
+        if (!(holder instanceof ServerPlayer player) || player.tickCount % 20 != 0) {
+            return;
+        }
+        var tag = stack.getTag();
+        if (tag == null || !tag.hasUUID(DRAGON_ID)) {
+            return;
+        }
+        var id = tag.getUUID(DRAGON_ID);
+        var records = IssuedDragonRings.get(player.server);
+        if (!records.contains(id)) {
+            return;
+        }
+        var nameInSnapshot = storedName(player.server, id);
+        if (nameInSnapshot != null) {
+            records.rememberName(id, nameInSnapshot);
+        }
+        var latest = records.nameOf(id);
+        if (latest != null && !latest.equals(tag.getString(DRAGON_NAME))) {
+            tag.putString(DRAGON_NAME, latest);
+        }
+    }
+
+    private static String storedName(MinecraftServer server, UUID id) {
+        try {
+            if (DragonStorageData.get(server).get(id) instanceof DragonStorageData.Stored stored) {
+                var snapshot = stored.snapshot();
+                var customName = snapshot.getString("CustomName");
+                if (!customName.isEmpty()) {
+                    return customName;
+                }
+                var breed = snapshot.getString(TameableDragon.NBT_BREED);
+                if (!breed.isEmpty()) {
+                    return Component.Serializer.toJson(Component.translatable(DragonBreed.getTranslationKey(breed)));
+                }
+            }
+        } catch (IOException ignored) {
+            // Keep the ring's current display name when the snapshot is unavailable.
+        }
+        return null;
     }
 
     @Override

@@ -110,6 +110,7 @@ final class DragonStorage {
         if (dragon.getBreed() == null || !dragon.save(snapshot)) {
             return Result.INVALID_DATA;
         }
+        IssuedDragonRings.get(player.server).rememberName(dragon);
         data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, true));
         dragon.discard();
         return Result.MINION;
