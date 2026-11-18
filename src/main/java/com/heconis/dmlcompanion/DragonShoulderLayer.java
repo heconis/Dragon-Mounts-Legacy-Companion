@@ -1,6 +1,7 @@
 package com.heconis.dmlcompanion;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -51,10 +52,12 @@ public final class DragonShoulderLayer extends RenderLayer<AbstractClientPlayer,
         }
         poses.pushPose();
         try {
-            // Use the parrot's shoulder offset at floor level. DML already renders from the entity's feet.
-            poses.translate(-0.4, player.isCrouching() ? 0.2 : 0, 0);
+            // Keep the parrot's shoulder anchor and tuck the dragon down and behind it.
+            double crouchOffset = player.isCrouching() ? 0.2 : 0;
+            poses.translate(-0.4, crouchOffset + 0.18, 0.24);
             // Undo the player model's axis flip so the dragon renderer receives an upright coordinate system.
             poses.scale(-1, -1, 1);
+            poses.mulPose(Axis.XP.rotationDegrees(-35));
             renderer.renderOnShoulder(minion, partialTick, poses, buffers, light);
         } finally {
             poses.popPose();
