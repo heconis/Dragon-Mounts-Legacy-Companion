@@ -1,6 +1,7 @@
 {
   "item.dmlcompanion.dragon_ring": "ドラゴンの指輪",
   "item.dmlcompanion.dragon_ring.bound": "%sの指輪",
+  "entity.dmlcompanion.minion": "ドラゴンのミニオン",
   "key.categories.dmlcompanion": "Dragon Mounts: Legacy Companion",
   "key.dmlcompanion.toggle_dragon": "ドラゴンの形態を切り替える",
   "screen.dmlcompanion.minion_settings": "ミニオン設定",
@@ -8,8 +9,8 @@
   "screen.dmlcompanion.display.follow": "後方追従",
   "screen.dmlcompanion.display.head": "頭乗り",
   "screen.dmlcompanion.display.hidden": "非表示",
-  "message.dmlcompanion.minion": "ドラゴンをミニオンにしました。",
-  "message.dmlcompanion.restored": "ドラゴンを召喚しました。",
+  "message.dmlcompanion.minion": "%sをミニオンにしました。",
+  "message.dmlcompanion.restored": "%sを召喚しました。",
   "message.dmlcompanion.no_ring": "自分のドラゴンの指輪を Curios の Ring スロットに装備してください。",
   "message.dmlcompanion.unbound": "指輪と自分のドラゴンの紐づけを確認できませんでした。",
   "message.dmlcompanion.dead": "このドラゴンは死亡したため召喚できません。",

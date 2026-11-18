@@ -3,6 +3,7 @@ package com.heconis.dmlcompanion;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.RegionFile;
 
@@ -45,6 +46,7 @@ public final class DragonStorageDataCheck {
             require(stored.owner().equals(owner), "The owner must survive reopening the journal");
             require(stored.snapshot().equals(snapshot), "The entire snapshot must survive reopening the journal");
             require(stored.minion(), "The minion preference must survive reopening the journal");
+            verifyDragonNames(stored);
             verifyLegacyStorage(file, id, owner, snapshot);
             data.commit(id, new DragonStorageData.Active(revision));
             data = new DragonStorageData(file);
@@ -76,6 +78,22 @@ public final class DragonStorageDataCheck {
             Files.delete(folder);
         }
         System.out.println("Dragon storage journal checks passed");
+    }
+
+    private static void verifyDragonNames(DragonStorageData.Stored stored) {
+        require("Ash".equals(stored.dragonName().getString()), "A stored name tag takes priority over the breed");
+
+        var snapshot = stored.snapshot().copy();
+        var unnamed = new DragonStorageData.Stored(stored.owner(), snapshot, true);
+        snapshot.remove("CustomName");
+        require(unnamed.dragonName().getContents() instanceof TranslatableContents translated
+                        && translated.getKey().equals("dragon_breed.dragonmounts.fire"),
+                "Unnamed dragons must use the breed translation key");
+
+        snapshot.putString("CustomName", "{");
+        require(unnamed.dragonName().getContents() instanceof TranslatableContents translated
+                        && translated.getKey().equals("dragon_breed.dragonmounts.fire"),
+                "A malformed custom name must fall back to the breed");
     }
 
     private static void verifyLegacyStorage(Path file, UUID id, UUID owner, CompoundTag snapshot) throws IOException {

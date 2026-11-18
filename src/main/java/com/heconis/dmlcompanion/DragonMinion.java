@@ -2,6 +2,8 @@ package com.heconis.dmlcompanion;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.LiteralContents;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -36,10 +38,11 @@ final class DragonMinion extends Entity {
         setNoGravity(true);
     }
 
-    boolean bind(Player owner, UUID id, ResourceLocation breed) {
+    boolean bind(Player owner, UUID id, ResourceLocation breed, Component name) {
         dragonId = id;
         entityData.set(OWNER, Optional.of(owner.getUUID()));
         entityData.set(BREED, breed.toString());
+        setCustomName(name);
         setPos(owner.position());
         var target = followPosition(owner, 0);
         if (!canOccupy(target)) {
@@ -50,6 +53,17 @@ final class DragonMinion extends Entity {
         }
         moveTo(target.x, target.y, target.z, owner.getYRot(), 0);
         return true;
+    }
+
+    @Override
+    public Component getCustomName() {
+        var name = super.getCustomName();
+        // Xaero's radar reads plain custom names. Resolve breed translations on the viewing client.
+        if (name != null && level().isClientSide
+                && (!(name.getContents() instanceof LiteralContents) || !name.getSiblings().isEmpty())) {
+            return Component.literal(name.getString());
+        }
+        return name;
     }
 
     UUID dragonId() {

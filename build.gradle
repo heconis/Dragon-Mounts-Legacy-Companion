@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.heconis.dmlcompanion'
-version = '0.3.20'
+version = '0.3.21'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 

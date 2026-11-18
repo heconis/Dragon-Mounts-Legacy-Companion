@@ -42,12 +42,14 @@ final class DragonNetwork {
         }
         cooldowns.addCooldown(ring, TOGGLE_COOLDOWN_TICKS);
 
-        var result = DragonStorage.toggle(player);
-        if (result == DragonStorage.Result.MINION || result == DragonStorage.Result.RESTORED) {
+        var outcome = DragonStorage.toggle(player);
+        var result = outcome.result();
+        boolean success = result == DragonStorage.Result.MINION || result == DragonStorage.Result.RESTORED;
+        if (success) {
             DragonMinions.refresh(player);
         }
-        var message = Component.translatable("message.dmlcompanion." + result.name().toLowerCase(Locale.ROOT));
-        boolean success = result == DragonStorage.Result.MINION || result == DragonStorage.Result.RESTORED;
+        String key = "message.dmlcompanion." + result.name().toLowerCase(Locale.ROOT);
+        var message = success ? Component.translatable(key, outcome.dragonName()) : Component.translatable(key);
         player.displayClientMessage(message, success);
     }
 

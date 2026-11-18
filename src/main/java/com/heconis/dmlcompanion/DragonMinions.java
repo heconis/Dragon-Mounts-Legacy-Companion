@@ -65,7 +65,8 @@ public final class DragonMinions {
             var breed = ResourceLocation.tryParse(breedId);
             var level = player.serverLevel();
             var minion = DragonMountsCompanion.MINION.get().create(level);
-            if (breed != null && minion != null && minion.bind(player, id, breed) && level.addFreshEntity(minion)) {
+            if (breed != null && minion != null && minion.bind(player, id, breed, stored.dragonName())
+                    && level.addFreshEntity(minion)) {
                 ACTIVE.put(player, minion);
             }
         } catch (IOException failure) {

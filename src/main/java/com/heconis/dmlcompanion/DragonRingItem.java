@@ -1,7 +1,6 @@
 package com.heconis.dmlcompanion;
 
 import com.github.kay9.dragonmounts.dragon.TameableDragon;
-import com.github.kay9.dragonmounts.dragon.breed.DragonBreed;
 import com.google.gson.JsonParseException;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -89,15 +88,8 @@ final class DragonRingItem extends Item implements ICurioItem {
     private static String storedName(MinecraftServer server, UUID id) {
         try {
             if (DragonStorageData.get(server).get(id) instanceof DragonStorageData.Stored stored) {
-                var snapshot = stored.snapshot();
-                var customName = snapshot.getString("CustomName");
-                if (!customName.isEmpty()) {
-                    return customName;
-                }
-                var breed = snapshot.getString(TameableDragon.NBT_BREED);
-                if (!breed.isEmpty()) {
-                    return Component.Serializer.toJson(Component.translatable(DragonBreed.getTranslationKey(breed)));
-                }
+                var name = stored.dragonName();
+                return name == null ? null : Component.Serializer.toJson(name);
             }
         } catch (IOException ignored) {
             // Keep the ring's current display name when the snapshot is unavailable.

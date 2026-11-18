@@ -1,6 +1,7 @@
 {
   "item.dmlcompanion.dragon_ring": "Dragon Ring",
   "item.dmlcompanion.dragon_ring.bound": "%s's Ring",
+  "entity.dmlcompanion.minion": "Dragon Minion",
   "key.categories.dmlcompanion": "Dragon Mounts: Legacy Companion",
   "key.dmlcompanion.toggle_dragon": "Switch dragon form",
   "screen.dmlcompanion.minion_settings": "Minion Settings",
@@ -8,8 +9,8 @@
   "screen.dmlcompanion.display.follow": "Follow behind",
   "screen.dmlcompanion.display.head": "On head",
   "screen.dmlcompanion.display.hidden": "Hidden",
-  "message.dmlcompanion.minion": "Your dragon is now a minion.",
-  "message.dmlcompanion.restored": "Summoned your dragon.",
+  "message.dmlcompanion.minion": "Made %s a minion.",
+  "message.dmlcompanion.restored": "Summoned %s.",
   "message.dmlcompanion.no_ring": "Equip your dragon ring in a Curios Ring slot.",
   "message.dmlcompanion.unbound": "Could not verify that this ring is linked to your dragon.",
   "message.dmlcompanion.dead": "This dragon has died and cannot be summoned.",

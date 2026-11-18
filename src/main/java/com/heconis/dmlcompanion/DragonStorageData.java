@@ -1,9 +1,11 @@
 package com.heconis.dmlcompanion;
 
 import com.github.kay9.dragonmounts.dragon.TameableDragon;
+import com.google.gson.JsonParseException;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -146,7 +148,24 @@ final class DragonStorageData {
 
     sealed interface Entry permits Stored, Active, Dead {}
 
-    record Stored(UUID owner, CompoundTag snapshot, boolean minion) implements Entry {}
+    record Stored(UUID owner, CompoundTag snapshot, boolean minion) implements Entry {
+        Component dragonName() {
+            String customName = snapshot.getString("CustomName");
+            if (!customName.isEmpty()) {
+                try {
+                    var name = Component.Serializer.fromJson(customName);
+                    if (name != null) {
+                        return name;
+                    }
+                } catch (JsonParseException ignored) {
+                    // Fall back to the breed name if the custom name cannot be read.
+                }
+            }
+            String breedId = snapshot.getString(TameableDragon.NBT_BREED);
+            // DML maps namespace:path to dragon_breed.namespace.path.
+            return breedId.isEmpty() ? null : Component.translatable("dragon_breed." + breedId.replace(':', '.'));
+        }
+    }
 
     record Active(UUID revision) implements Entry {}
 
