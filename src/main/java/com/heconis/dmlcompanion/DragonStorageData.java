@@ -58,7 +58,7 @@ final class DragonStorageData {
                         if (!tag.contains("Snapshot", Tag.TAG_COMPOUND)) {
                             throw new IOException("Missing stored dragon snapshot: " + id);
                         }
-                        yield new Stored(tag.getUUID("Owner"), tag.getCompound("Snapshot"));
+                        yield new Stored(tag.getUUID("Owner"), tag.getCompound("Snapshot"), tag.getBoolean("Minion"));
                     }
                     case "active" -> new Active(tag.getUUID("Revision"));
                     case "dead" -> Dead.INSTANCE;
@@ -134,6 +134,7 @@ final class DragonStorageData {
             tag.putString("State", "stored");
             tag.putUUID("Owner", stored.owner());
             tag.put("Snapshot", stored.snapshot());
+            tag.putBoolean("Minion", stored.minion());
         } else if (entry instanceof Active active) {
             tag.putString("State", "active");
             tag.putUUID("Revision", active.revision());
@@ -145,7 +146,7 @@ final class DragonStorageData {
 
     sealed interface Entry permits Stored, Active, Dead {}
 
-    record Stored(UUID owner, CompoundTag snapshot) implements Entry {}
+    record Stored(UUID owner, CompoundTag snapshot, boolean minion) implements Entry {}
 
     record Active(UUID revision) implements Entry {}
 

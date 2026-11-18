@@ -10,7 +10,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.Locale;
 
 final class DragonNetwork {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     private static final int TOGGLE_COOLDOWN_TICKS = 20;
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(DragonMountsCompanion.MOD_ID, "main"), () -> PROTOCOL,
@@ -43,8 +43,11 @@ final class DragonNetwork {
         cooldowns.addCooldown(ring, TOGGLE_COOLDOWN_TICKS);
 
         var result = DragonStorage.toggle(player);
+        if (result == DragonStorage.Result.MINION || result == DragonStorage.Result.RESTORED) {
+            DragonMinions.refresh(player);
+        }
         var message = Component.translatable("message.dmlcompanion." + result.name().toLowerCase(Locale.ROOT));
-        boolean success = result == DragonStorage.Result.STORED || result == DragonStorage.Result.RESTORED;
+        boolean success = result == DragonStorage.Result.MINION || result == DragonStorage.Result.RESTORED;
         player.displayClientMessage(message, success);
     }
 

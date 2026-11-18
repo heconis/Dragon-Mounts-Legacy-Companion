@@ -59,14 +59,34 @@ final class DragonStorage {
             }
             return entry instanceof DragonStorageData.Stored stored
                     ? restore(player, id, data, stored)
-                    : store(player, id, data);
+                    : store(player, id, data, true);
         } catch (IOException | RuntimeException failure) {
             LOGGER.error("Could not change storage state for dragon {}", id, failure);
             return Result.STORAGE_ERROR;
         }
     }
 
-    private static Result store(ServerPlayer player, UUID id, DragonStorageData data) throws IOException {
+    static void onPlayerDeath(ServerPlayer player, UUID id) {
+        try {
+            var data = DragonStorageData.get(player.server);
+            if (data.isRestoring(id)) {
+                return;
+            }
+            var entry = data.get(id);
+            if (entry instanceof DragonStorageData.Stored stored) {
+                if (stored.minion() && stored.owner().equals(player.getUUID())) {
+                    data.commit(id, new DragonStorageData.Stored(stored.owner(), stored.snapshot(), false));
+                }
+            } else if (entry instanceof DragonStorageData.Active
+                    || entry == null && IssuedDragonRings.get(player.server).contains(id)) {
+                store(player, id, data, false);
+            }
+        } catch (IOException | RuntimeException failure) {
+            LOGGER.error("Could not store dragon {} on player death", id, failure);
+        }
+    }
+
+    private static Result store(ServerPlayer player, UUID id, DragonStorageData data, boolean asMinion) throws IOException {
         var loaded = findLoaded(player.server, id);
         if (loaded.isEmpty()) {
             return Result.NOT_LOADED;
@@ -93,9 +113,9 @@ final class DragonStorage {
         if (dragon.getBreed() == null || !dragon.save(snapshot)) {
             return Result.INVALID_DATA;
         }
-        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot));
+        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, asMinion));
         dragon.discard();
-        return Result.STORED;
+        return asMinion ? Result.MINION : Result.STORED;
     }
 
     private static Result restore(ServerPlayer player, UUID id, DragonStorageData data,
@@ -254,7 +274,7 @@ final class DragonStorage {
     }
 
     enum Result {
-        STORED, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
+        STORED, MINION, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
         NOT_LOADED, CONFLICT, ATTACHED, INVALID_DATA, NO_SPACE, ADD_FAILED, STORAGE_ERROR
     }
 }

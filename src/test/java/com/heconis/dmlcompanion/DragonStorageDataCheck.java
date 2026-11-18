@@ -37,13 +37,19 @@ public final class DragonStorageDataCheck {
             snapshot.putBoolean("Saddle", true);
 
             data.commit(id, new DragonStorageData.Active(previousRevision));
-            data.commit(id, new DragonStorageData.Stored(owner, snapshot));
+            data.commit(id, new DragonStorageData.Stored(owner, snapshot, true));
             data = new DragonStorageData(file);
             require(!data.allowsJoin(id, previousRevision, null), "The old entity cannot rejoin after storage");
             require(!data.allowsJoin(id, revision, null), "An uncommitted restoration cannot rejoin");
             var stored = (DragonStorageData.Stored) data.get(id);
             require(stored.owner().equals(owner), "The owner must survive reopening the journal");
             require(stored.snapshot().equals(snapshot), "The entire snapshot must survive reopening the journal");
+            require(stored.minion(), "The minion preference must survive reopening the journal");
+            verifyLegacyStorage(file, id, owner, snapshot);
+            data.commit(id, new DragonStorageData.Stored(owner, snapshot, false));
+            var afterDeath = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
+            require(!afterDeath.minion() && afterDeath.snapshot().equals(snapshot),
+                    "Clearing the minion preference must preserve the dragon snapshot");
 
             data.commit(id, new DragonStorageData.Active(revision));
             data = new DragonStorageData(file);
@@ -60,7 +66,7 @@ public final class DragonStorageDataCheck {
             Files.createDirectory(file);
             Files.createFile(writeBlocker);
             try {
-                data.commit(id, new DragonStorageData.Stored(owner, snapshot));
+                data.commit(id, new DragonStorageData.Stored(owner, snapshot, true));
                 throw new AssertionError("Replacing a nonempty directory must fail");
             } catch (IOException expected) {
                 require(data.get(id) == DragonStorageData.Dead.INSTANCE,
@@ -75,6 +81,22 @@ public final class DragonStorageDataCheck {
             Files.delete(folder);
         }
         System.out.println("Dragon storage journal checks passed");
+    }
+
+    private static void verifyLegacyStorage(Path file, UUID id, UUID owner, CompoundTag snapshot) throws IOException {
+        var legacyEntry = new CompoundTag();
+        legacyEntry.putString("State", "stored");
+        legacyEntry.putUUID("Owner", owner);
+        legacyEntry.put("Snapshot", snapshot);
+        var dragons = new CompoundTag();
+        dragons.put(id.toString(), legacyEntry);
+        var root = new CompoundTag();
+        root.putInt("Format", 1);
+        root.put("Dragons", dragons);
+        NbtIo.writeCompressed(root, file.toFile());
+        var restored = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
+        require(!restored.minion() && restored.snapshot().equals(snapshot),
+                "Storage from 0.2.0 must load without activating a minion");
     }
 
     private static void verifySavedRevision(Path folder, Path file, UUID id, UUID revision) throws IOException {
