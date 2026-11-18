@@ -1,7 +1,6 @@
 package com.heconis.dmlcompanion;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -57,12 +56,12 @@ public final class DragonHeadLayer extends RenderLayer<AbstractClientPlayer, Pla
         try {
             var head = getParentModel().head;
             float clearance = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 0.75f : 2f;
-            // Rotate the crown offset with the head. Use only the head's yaw for the dragon's orientation.
             var headRotation = new Quaternionf().rotationZYX(head.zRot, head.yRot, head.xRot);
             var crown = new Vector3f(0, -(8 + clearance) / 16, 0).rotate(headRotation);
+            // Keep the torso centering offset in the horizontal plane as the dragon tilts at the crown.
+            crown.add(new Vector3f(0, 0, 0.06f).rotateY(head.yRot));
             poses.translate(head.x / 16 + crown.x, head.y / 16 + crown.y, head.z / 16 + crown.z);
-            poses.mulPose(Axis.YP.rotation(head.yRot));
-            poses.translate(0, 0, 0.06);
+            poses.mulPose(headRotation);
             // Undo the player model's axis flip so the dragon renderer receives an upright coordinate system.
             poses.scale(-1, -1, 1);
             renderer.renderOnHead(minion, partialTick, poses, buffers, light);
