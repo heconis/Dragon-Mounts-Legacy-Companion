@@ -1,4 +1,19 @@
 {
   "item.dmlcompanion.dragon_ring": "ドラゴンの指輪",
-  "item.dmlcompanion.dragon_ring.bound": "%sの指輪"
+  "item.dmlcompanion.dragon_ring.bound": "%sの指輪",
+  "key.categories.dmlcompanion": "Dragon Mounts: Legacy Companion",
+  "key.dmlcompanion.toggle_dragon": "ドラゴンの格納・召喚",
+  "message.dmlcompanion.stored": "ドラゴンを格納しました。",
+  "message.dmlcompanion.restored": "ドラゴンを召喚しました。",
+  "message.dmlcompanion.no_ring": "自分のドラゴンの指輪を Curios の Ring スロットに装備してください。",
+  "message.dmlcompanion.unbound": "指輪と自分のドラゴンの紐づけを確認できませんでした。",
+  "message.dmlcompanion.dead": "このドラゴンは死亡したため召喚できません。",
+  "message.dmlcompanion.busy": "このドラゴンは召喚処理中です。",
+  "message.dmlcompanion.not_loaded": "ドラゴンのいる場所が読み込まれていません。ドラゴンに近づいてから試してください。",
+  "message.dmlcompanion.conflict": "ドラゴンの現在の状態を確認できなかったため、操作を中止しました。",
+  "message.dmlcompanion.attached": "騎乗中、乗客がいる、またはリードでつながれているドラゴンは格納できません。",
+  "message.dmlcompanion.invalid_data": "ドラゴンのデータを読み込み、または保存できませんでした。",
+  "message.dmlcompanion.no_space": "前方に十分な空間がありません。ドラゴンは格納されたままです。",
+  "message.dmlcompanion.add_failed": "ドラゴンをワールドに召喚できませんでした。ドラゴンは格納されたままです。",
+  "message.dmlcompanion.storage_error": "ドラゴンの状態を保存できたことを確認できませんでした。サーバーログを確認してください。"
 }

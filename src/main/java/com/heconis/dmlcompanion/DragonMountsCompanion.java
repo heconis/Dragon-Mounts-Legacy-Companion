@@ -19,6 +19,7 @@ public final class DragonMountsCompanion {
     public DragonMountsCompanion(FMLJavaModLoadingContext context) {
         var modBus = context.getModEventBus();
         ITEMS.register(modBus);
+        DragonNetwork.register();
         modBus.addListener(this::commonSetup);
     }
 

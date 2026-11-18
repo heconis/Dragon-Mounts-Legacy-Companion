@@ -34,15 +34,7 @@ final class DragonStorage {
 
     private DragonStorage() {}
 
-    static Result store(ServerPlayer player) {
-        return operate(player, DragonStorage::store);
-    }
-
-    static Result restore(ServerPlayer player) {
-        return operate(player, DragonStorage::restore);
-    }
-
-    private static Result operate(ServerPlayer player, Operation operation) {
+    static Result toggle(ServerPlayer player) {
         var server = player.server;
         if (!server.isSameThread()) {
             throw new IllegalStateException("Dragon storage must run on the server thread");
@@ -65,7 +57,9 @@ final class DragonStorage {
             if (data.isRestoring(id)) {
                 return Result.BUSY;
             }
-            return operation.run(player, id, data);
+            return entry instanceof DragonStorageData.Stored stored
+                    ? restore(player, id, data, stored)
+                    : store(player, id, data);
         } catch (IOException | RuntimeException failure) {
             LOGGER.error("Could not change storage state for dragon {}", id, failure);
             return Result.STORAGE_ERROR;
@@ -73,9 +67,6 @@ final class DragonStorage {
     }
 
     private static Result store(ServerPlayer player, UUID id, DragonStorageData data) throws IOException {
-        if (data.get(id) instanceof DragonStorageData.Stored) {
-            return Result.ALREADY_STORED;
-        }
         var loaded = findLoaded(player.server, id);
         if (loaded.isEmpty()) {
             return Result.NOT_LOADED;
@@ -94,6 +85,7 @@ final class DragonStorage {
             return Result.ATTACHED;
         }
         if (dragon.level().noSave()) {
+            LOGGER.warn("Storage refused for dragon {} because saving is disabled in {}", id, dragon.level().dimension().location());
             return Result.STORAGE_ERROR;
         }
 
@@ -106,10 +98,8 @@ final class DragonStorage {
         return Result.STORED;
     }
 
-    private static Result restore(ServerPlayer player, UUID id, DragonStorageData data) throws IOException {
-        if (!(data.get(id) instanceof DragonStorageData.Stored stored)) {
-            return Result.NOT_STORED;
-        }
+    private static Result restore(ServerPlayer player, UUID id, DragonStorageData data,
+                                  DragonStorageData.Stored stored) throws IOException {
         if (!stored.owner().equals(player.getUUID())) {
             return Result.UNBOUND;
         }
@@ -126,6 +116,7 @@ final class DragonStorage {
             return Result.NO_SPACE;
         }
         if (level.noSave()) {
+            LOGGER.warn("Restoration refused for dragon {} because saving is disabled in {}", id, level.dimension().location());
             return Result.STORAGE_ERROR;
         }
 
@@ -146,6 +137,7 @@ final class DragonStorage {
             var worldRoot = player.server.getWorldPath(LevelResource.ROOT);
             var entityFolder = DimensionType.getStorageFolder(level.dimension(), worldRoot).resolve("entities");
             if (!hasSavedRevision(entityFolder, dragon.chunkPosition(), id, revision)) {
+                LOGGER.warn("Restored dragon {} was not found in the saved entity chunk {}", id, dragon.chunkPosition());
                 return Result.STORAGE_ERROR;
             }
             data.commit(id, new DragonStorageData.Active(revision));
@@ -261,12 +253,8 @@ final class DragonStorage {
         return data.hasUUID(REVISION) ? data.getUUID(REVISION) : null;
     }
 
-    private interface Operation {
-        Result run(ServerPlayer player, UUID id, DragonStorageData data) throws IOException;
-    }
-
     enum Result {
-        STORED, RESTORED, NO_RING, UNBOUND, DEAD, BUSY, ALREADY_STORED, NOT_STORED,
+        STORED, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
         NOT_LOADED, CONFLICT, ATTACHED, INVALID_DATA, NO_SPACE, ADD_FAILED, STORAGE_ERROR
     }
 }

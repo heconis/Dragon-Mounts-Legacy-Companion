@@ -1,4 +1,19 @@
 {
   "item.dmlcompanion.dragon_ring": "Dragon Ring",
-  "item.dmlcompanion.dragon_ring.bound": "%s's Ring"
+  "item.dmlcompanion.dragon_ring.bound": "%s's Ring",
+  "key.categories.dmlcompanion": "Dragon Mounts: Legacy Companion",
+  "key.dmlcompanion.toggle_dragon": "Store or summon dragon",
+  "message.dmlcompanion.stored": "Stored your dragon.",
+  "message.dmlcompanion.restored": "Summoned your dragon.",
+  "message.dmlcompanion.no_ring": "Equip your dragon ring in a Curios Ring slot.",
+  "message.dmlcompanion.unbound": "Could not verify that this ring is linked to your dragon.",
+  "message.dmlcompanion.dead": "This dragon has died and cannot be summoned.",
+  "message.dmlcompanion.busy": "This dragon is already being summoned.",
+  "message.dmlcompanion.not_loaded": "The linked dragon is not loaded. Move closer to the dragon and try again.",
+  "message.dmlcompanion.conflict": "The dragon's current state could not be verified. The operation was canceled.",
+  "message.dmlcompanion.attached": "Dismount the dragon, remove its passengers, and release any lead before storing it.",
+  "message.dmlcompanion.invalid_data": "The dragon's data could not be read or saved.",
+  "message.dmlcompanion.no_space": "There is not enough space ahead to summon the dragon. It remains stored.",
+  "message.dmlcompanion.add_failed": "The dragon could not enter the world. It remains stored.",
+  "message.dmlcompanion.storage_error": "Could not verify that the dragon's state was saved. Check the server log."
 }
