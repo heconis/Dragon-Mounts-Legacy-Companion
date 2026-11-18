@@ -10,9 +10,7 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -23,7 +21,8 @@ import java.util.WeakHashMap;
 
 @Mod.EventBusSubscriber(modid = DragonMountsCompanion.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
-    private static final float SCALE = 0.17f;
+    private static final float FOLLOW_SCALE = 0.17f;
+    private static final float SHOULDER_SCALE = 0.12f;
     private static final ResourceLocation MISSING_TEXTURE = ResourceLocation.withDefaultNamespace("missingno");
     private final DragonRenderer dragonRenderer;
     private final Map<DragonMinion, Preview> previews = new WeakHashMap<>();
@@ -40,53 +39,49 @@ public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
 
     @Override
     public boolean shouldRender(DragonMinion minion, Frustum frustum, double x, double y, double z) {
-        return MinionDisplay.MODE.get() != MinionDisplay.Mode.HIDDEN
+        return MinionDisplay.MODE.get() == MinionDisplay.Mode.FOLLOW
                 && super.shouldRender(minion, frustum, x, y, z);
     }
 
     @Override
     public void render(DragonMinion minion, float yaw, float partialTick, PoseStack poses,
                        MultiBufferSource buffers, int light) {
-        var mode = MinionDisplay.MODE.get();
-        if (mode == MinionDisplay.Mode.HIDDEN) {
-            return;
+        if (MinionDisplay.MODE.get() == MinionDisplay.Mode.FOLLOW) {
+            renderModel(minion, yaw, partialTick, poses, buffers, light, false);
         }
+    }
+
+    void renderOnShoulder(DragonMinion minion, float partialTick, PoseStack poses, MultiBufferSource buffers, int light) {
+        // The player layer already supplies the body yaw. DML's renderer rotates by 180 degrees minus its yaw.
+        renderModel(minion, 180, partialTick, poses, buffers, light, true);
+    }
+
+    private void renderModel(DragonMinion minion, float yaw, float partialTick, PoseStack poses,
+                             MultiBufferSource buffers, int light, boolean sitting) {
         var preview = previewFor(minion);
         if (preview == null) {
             return;
         }
 
         var dragon = preview.dragon;
-        var position = minion.getPosition(partialTick);
-        var offset = Vec3.ZERO;
-        var owner = minion.owner();
-        boolean sitting = mode == MinionDisplay.Mode.SHOULDER && owner != null;
-        if (sitting) {
-            yaw = Mth.rotLerp(partialTick, owner.yRotO, owner.getYRot());
-            var side = Vec3.directionFromRotation(0, yaw + 90).scale(0.58);
-            offset = owner.getPosition(partialTick).add(side.x, owner.getEyeHeight() - 0.25, side.z).subtract(position);
-        }
         dragon.setFlying(!sitting);
         dragon.setInSittingPose(sitting);
+        dragon.setYRot(yaw);
+        dragon.yBodyRotO = dragon.yBodyRot = yaw;
+        dragon.yHeadRotO = dragon.yHeadRot = yaw;
         if (preview.lastTick != minion.tickCount) {
             preview.lastTick = minion.tickCount;
             dragon.setOldPosAndRot();
-            dragon.setPos(position);
-            if (sitting) {
-                // The shoulder moves with the player, but the dragon is sitting relative to it.
-                dragon.setOldPosAndRot();
+            if (!sitting) {
+                dragon.setPos(minion.getPosition(partialTick));
             }
             dragon.tickCount = minion.tickCount;
             dragon.getAnimator().tick();
         }
-        dragon.setYRot(yaw);
-        dragon.yBodyRotO = dragon.yBodyRot = yaw;
-        dragon.yHeadRotO = dragon.yHeadRot = yaw;
 
         poses.pushPose();
         try {
-            poses.translate(offset.x, offset.y, offset.z);
-            float scale = SCALE / Math.max(0.01f, dragon.getScale());
+            float scale = (sitting ? SHOULDER_SCALE : FOLLOW_SCALE) / Math.max(0.01f, dragon.getScale());
             poses.scale(scale, scale, scale);
             dragonRenderer.render(dragon, yaw, partialTick, poses, buffers, light);
         } finally {

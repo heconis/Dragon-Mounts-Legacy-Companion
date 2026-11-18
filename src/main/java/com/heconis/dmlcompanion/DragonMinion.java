@@ -57,7 +57,11 @@ final class DragonMinion extends Entity {
     }
 
     Player owner() {
-        return entityData.get(OWNER).map(level()::getPlayerByUUID).orElse(null);
+        return ownerId().map(level()::getPlayerByUUID).orElse(null);
+    }
+
+    Optional<UUID> ownerId() {
+        return entityData.get(OWNER);
     }
 
     String breedId() {
