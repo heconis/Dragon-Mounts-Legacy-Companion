@@ -6,7 +6,7 @@
   "screen.dmlcompanion.minion_settings": "Minion Settings",
   "screen.dmlcompanion.display": "Minion display",
   "screen.dmlcompanion.display.follow": "Follow behind",
-  "screen.dmlcompanion.display.shoulder": "Shoulder",
+  "screen.dmlcompanion.display.head": "On head",
   "screen.dmlcompanion.display.hidden": "Hidden",
   "message.dmlcompanion.minion": "Your dragon is now a minion.",
   "message.dmlcompanion.restored": "Summoned your dragon.",

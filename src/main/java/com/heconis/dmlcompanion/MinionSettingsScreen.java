@@ -23,7 +23,7 @@ public final class MinionSettingsScreen extends Screen {
     private MinionSettingsScreen(Screen parent) {
         super(Component.translatable("screen.dmlcompanion.minion_settings"));
         this.parent = parent;
-        selected = MinionDisplay.MODE.get();
+        selected = MinionDisplay.currentMode();
     }
 
     @SubscribeEvent
@@ -40,7 +40,7 @@ public final class MinionSettingsScreen extends Screen {
         var optionWidth = Math.min(240, width - 24);
         addRenderableWidget(CycleButton.<MinionDisplay.Mode>builder(mode ->
                         Component.translatable("screen.dmlcompanion.display." + mode.name().toLowerCase(Locale.ROOT)))
-                .withValues(MinionDisplay.Mode.values())
+                .withValues(MinionDisplay.Mode.FOLLOW, MinionDisplay.Mode.HEAD, MinionDisplay.Mode.HIDDEN)
                 .withInitialValue(selected)
                 .create(left - optionWidth / 2, middle - 16, optionWidth, 20,
                         Component.translatable("screen.dmlcompanion.display"), (button, mode) -> selected = mode));

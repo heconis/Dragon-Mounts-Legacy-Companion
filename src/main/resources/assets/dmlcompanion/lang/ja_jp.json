@@ -6,7 +6,7 @@
   "screen.dmlcompanion.minion_settings": "ミニオン設定",
   "screen.dmlcompanion.display": "表示方法",
   "screen.dmlcompanion.display.follow": "後方追従",
-  "screen.dmlcompanion.display.shoulder": "肩乗り",
+  "screen.dmlcompanion.display.head": "頭乗り",
   "screen.dmlcompanion.display.hidden": "非表示",
   "message.dmlcompanion.minion": "ドラゴンをミニオンにしました。",
   "message.dmlcompanion.restored": "ドラゴンを召喚しました。",

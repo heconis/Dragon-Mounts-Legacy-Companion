@@ -11,5 +11,11 @@ final class MinionDisplay {
 
     private MinionDisplay() {}
 
-    enum Mode { FOLLOW, SHOULDER, HIDDEN }
+    static Mode currentMode() {
+        var mode = MODE.get();
+        return mode == Mode.SHOULDER ? Mode.HEAD : mode;
+    }
+
+    // Keep the old TOML value readable so existing shoulder settings become head settings.
+    enum Mode { FOLLOW, HEAD, HIDDEN, SHOULDER }
 }
