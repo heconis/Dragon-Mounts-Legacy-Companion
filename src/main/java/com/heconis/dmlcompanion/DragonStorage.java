@@ -73,11 +73,8 @@ final class DragonStorage {
                 return;
             }
             var entry = data.get(id);
-            if (entry instanceof DragonStorageData.Stored stored) {
-                if (stored.minion() && stored.owner().equals(player.getUUID())) {
-                    data.commit(id, new DragonStorageData.Stored(stored.owner(), stored.snapshot(), false));
-                }
-            } else if (entry instanceof DragonStorageData.Active
+            // A stored dragon already has a snapshot. Keep its minion preference across respawn.
+            if (entry instanceof DragonStorageData.Active
                     || entry == null && IssuedDragonRings.get(player.server).contains(id)) {
                 store(player, id, data, false);
             }

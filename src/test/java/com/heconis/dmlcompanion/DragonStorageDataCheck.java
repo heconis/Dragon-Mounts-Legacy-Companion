@@ -46,11 +46,6 @@ public final class DragonStorageDataCheck {
             require(stored.snapshot().equals(snapshot), "The entire snapshot must survive reopening the journal");
             require(stored.minion(), "The minion preference must survive reopening the journal");
             verifyLegacyStorage(file, id, owner, snapshot);
-            data.commit(id, new DragonStorageData.Stored(owner, snapshot, false));
-            var afterDeath = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
-            require(!afterDeath.minion() && afterDeath.snapshot().equals(snapshot),
-                    "Clearing the minion preference must preserve the dragon snapshot");
-
             data.commit(id, new DragonStorageData.Active(revision));
             data = new DragonStorageData(file);
             require(data.allowsJoin(id, revision, null), "The committed revision can rejoin");

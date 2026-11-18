@@ -130,6 +130,11 @@ final class DragonMinion extends Entity {
     }
 
     @Override
+    public boolean displayFireAnimation() {
+        return false;
+    }
+
+    @Override
     public boolean canBeHitByProjectile() {
         return false;
     }
