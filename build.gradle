@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.heconis.dmlcompanion'
-version = '0.1.0-dev'
+version = '0.1.0'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -11,6 +11,9 @@ minecraft {
     mappings channel: 'official', version: '1.20.1'
     runs {
         configureEach {
+            // Map dependency mixin references from production SRG names into the development mappings.
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', layout.buildDirectory.file('createSrgToMcp/output.srg').get().asFile.absolutePath
             mods {
                 dmlcompanion { source sourceSets.main }
             }
@@ -34,8 +37,8 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
-    runtimeOnly fg.deobf('curse.maven:dragon-mounts-legacy-375088:5335579')
-    runtimeOnly fg.deobf('curse.maven:curios-309927:6418456')
+    implementation fg.deobf('curse.maven:dragon-mounts-legacy-375088:5335579')
+    implementation fg.deobf('curse.maven:curios-309927:6418456')
 }
 
 tasks.withType(JavaCompile).configureEach {
