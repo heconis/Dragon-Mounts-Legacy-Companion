@@ -2,15 +2,17 @@ package com.heconis.dmlcompanion;
 
 import com.github.kay9.dragonmounts.dragon.TameableDragon;
 import com.google.gson.JsonParseException;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.nbt.Tag;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 
+import java.util.Optional;
 import java.util.UUID;
 
 final class DragonRingItem extends Item implements ICurioItem {
@@ -21,6 +23,28 @@ final class DragonRingItem extends Item implements ICurioItem {
 
     DragonRingItem() {
         super(new Properties().stacksTo(1));
+    }
+
+    Optional<UUID> equippedDragon(ServerPlayer player) {
+        return CuriosApi.getCuriosInventory(player).resolve().flatMap(inventory -> {
+            var rings = inventory.findCurios(this);
+            if (rings.size() != 1) {
+                return Optional.empty();
+            }
+            var ring = rings.get(0);
+            var slot = ring.slotContext();
+            return !slot.cosmetic() && RING_SLOT.equals(slot.identifier())
+                    ? ownedDragon(ring.stack(), player) : Optional.empty();
+        });
+    }
+
+    private Optional<UUID> ownedDragon(ItemStack stack, Player player) {
+        var tag = stack.getTag();
+        if (tag == null || !tag.hasUUID(DRAGON_ID) || !tag.hasUUID(OWNER_ID)
+                || !player.getUUID().equals(tag.getUUID(OWNER_ID))) {
+            return Optional.empty();
+        }
+        return Optional.of(tag.getUUID(DRAGON_ID));
     }
 
     ItemStack bind(TameableDragon dragon, UUID ownerId) {
@@ -54,9 +78,7 @@ final class DragonRingItem extends Item implements ICurioItem {
             return false;
         }
 
-        var tag = stack.getTag();
-        if (tag == null || !tag.hasUUID(DRAGON_ID) || !tag.hasUUID(OWNER_ID)
-                || !player.getUUID().equals(tag.getUUID(OWNER_ID))) {
+        if (ownedDragon(stack, player).isEmpty()) {
             return false;
         }
 

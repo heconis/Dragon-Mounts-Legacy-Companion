@@ -37,6 +37,10 @@ final class IssuedDragonRings extends SavedData {
         return true;
     }
 
+    boolean contains(UUID dragonId) {
+        return issued.contains(dragonId);
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag) {
         var dragonIds = new ListTag();
