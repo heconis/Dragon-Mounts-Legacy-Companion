@@ -18,7 +18,7 @@ Minecraft 1.20.1、Forge 47.4.10、JDK 17 を使用します。開発時は Grad
 
 ## 指輪の動作確認
 
-1. ビルドした `build/libs/dragon-mounts-legacy-companion-0.3.5.jar` に差し替えます。マルチプレイではサーバーと各クライアントに同じ版を入れます。
+1. ビルドした `build/libs/dragon-mounts-legacy-companion-0.3.6.jar` に差し替えます。マルチプレイではサーバーと各クライアントに同じ版を入れます。
 2. 確認済みの指輪があればそのまま使えます。新しく入手する場合は、まだ懐いていないドラゴンを DML の通常手順で懐かせます。成功時に指輪が1個手に入ります。インベントリが満杯の場合は足元付近に落ちます。
 3. Curios の Ring スロットに装備します。別のプレイヤーへの指輪の受け渡しと、Ring スロットが複数ある環境で2個目の装備を試すと、装備が拒否されます。
 
@@ -33,7 +33,7 @@ Minecraft 1.20.1、Forge 47.4.10、JDK 17 を使用します。開発時は Grad
 
 キーは **設定 → 操作設定 → キー割り当て → Dragon Mounts: Legacy Companion** で変更できます。
 
-Forge の **Mod 一覧 → Dragon Mounts: Legacy Companion → 設定** から、後方追従（初期値）、肩乗り、非表示を選べます。「完了」を押すと、そのクライアントの `config/dmlcompanion-client.toml` に保存され、すぐに反映されます。
+Forge の **Mod 一覧 → Dragon Mounts: Legacy Companion → 設定** から、後方追従（初期値）、肩乗り、非表示を選べます。肩乗りでは Dragon Mounts: Legacy のお座りポーズで表示されます。「完了」を押すと、そのクライアントの `config/dmlcompanion-client.toml` に保存され、すぐに反映されます。
 
 ミニオンは指輪を装備したまま再ログインやディメンション移動をしたときにも再表示されます。プレイヤー死亡後は、指輪が装備された状態でリスポーンするか、落とした指輪を拾って再装備すると、ミニオンが戻ります。
 

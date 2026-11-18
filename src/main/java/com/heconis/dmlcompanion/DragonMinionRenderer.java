@@ -60,15 +60,22 @@ public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
         var position = minion.getPosition(partialTick);
         var offset = Vec3.ZERO;
         var owner = minion.owner();
-        if (mode == MinionDisplay.Mode.SHOULDER && owner != null) {
+        boolean sitting = mode == MinionDisplay.Mode.SHOULDER && owner != null;
+        if (sitting) {
             yaw = Mth.rotLerp(partialTick, owner.yRotO, owner.getYRot());
             var side = Vec3.directionFromRotation(0, yaw + 90).scale(0.58);
             offset = owner.getPosition(partialTick).add(side.x, owner.getEyeHeight() - 0.25, side.z).subtract(position);
         }
+        dragon.setFlying(!sitting);
+        dragon.setInSittingPose(sitting);
         if (preview.lastTick != minion.tickCount) {
             preview.lastTick = minion.tickCount;
             dragon.setOldPosAndRot();
             dragon.setPos(position);
+            if (sitting) {
+                // The shoulder moves with the player, but the dragon is sitting relative to it.
+                dragon.setOldPosAndRot();
+            }
             dragon.tickCount = minion.tickCount;
             dragon.getAnimator().tick();
         }
@@ -111,7 +118,6 @@ public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
         }
         var dragon = new RenderDragon(minion.level());
         dragon.setBreed(breed);
-        dragon.setFlying(true);
         dragon.setPos(minion.position());
         dragon.setOldPosAndRot();
         return new Preview(dragon);
