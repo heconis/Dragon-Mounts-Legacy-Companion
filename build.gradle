@@ -1,0 +1,54 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '6.0.54'
+}
+
+group = 'com.heconis.dmlcompanion'
+version = '0.1.0-dev'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    runs {
+        configureEach {
+            mods {
+                dmlcompanion { source sourceSets.main }
+            }
+        }
+        client {
+            workingDirectory project.file('run')
+        }
+        server {
+            workingDirectory project.file('run-server')
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    maven {
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
+    runtimeOnly fg.deobf('curse.maven:dragon-mounts-legacy-375088:5335579')
+    runtimeOnly fg.deobf('curse.maven:curios-309927:6418456')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property 'modVersion', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand modVersion: project.version
+    }
+}
+
+tasks.named('jar').configure {
+    finalizedBy 'reobfJar'
+}
