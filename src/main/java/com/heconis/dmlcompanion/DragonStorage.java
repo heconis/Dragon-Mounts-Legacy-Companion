@@ -59,7 +59,7 @@ final class DragonStorage {
             }
             return entry instanceof DragonStorageData.Stored stored
                     ? restore(player, id, data, stored)
-                    : store(player, id, data, true);
+                    : minionize(player, id, data);
         } catch (IOException | RuntimeException failure) {
             LOGGER.error("Could not change storage state for dragon {}", id, failure);
             return Result.STORAGE_ERROR;
@@ -76,14 +76,14 @@ final class DragonStorage {
             // A stored dragon already has a snapshot. Keep its minion preference across respawn.
             if (entry instanceof DragonStorageData.Active
                     || entry == null && IssuedDragonRings.get(player.server).contains(id)) {
-                store(player, id, data, false);
+                minionize(player, id, data);
             }
         } catch (IOException | RuntimeException failure) {
             LOGGER.error("Could not store dragon {} on player death", id, failure);
         }
     }
 
-    private static Result store(ServerPlayer player, UUID id, DragonStorageData data, boolean asMinion) throws IOException {
+    private static Result minionize(ServerPlayer player, UUID id, DragonStorageData data) throws IOException {
         var loaded = findLoaded(player.server, id);
         if (loaded.isEmpty()) {
             return Result.NOT_LOADED;
@@ -110,9 +110,9 @@ final class DragonStorage {
         if (dragon.getBreed() == null || !dragon.save(snapshot)) {
             return Result.INVALID_DATA;
         }
-        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, asMinion));
+        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, true));
         dragon.discard();
-        return asMinion ? Result.MINION : Result.STORED;
+        return Result.MINION;
     }
 
     private static Result restore(ServerPlayer player, UUID id, DragonStorageData data,
@@ -271,7 +271,7 @@ final class DragonStorage {
     }
 
     enum Result {
-        STORED, MINION, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
+        MINION, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
         NOT_LOADED, CONFLICT, ATTACHED, INVALID_DATA, NO_SPACE, ADD_FAILED, STORAGE_ERROR
     }
 }
