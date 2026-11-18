@@ -21,7 +21,7 @@ public final class DragonMountsCompanion {
     private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, MOD_ID);
     static final RegistryObject<EntityType<DragonMinion>> MINION = ENTITIES.register("minion", () ->
             EntityType.Builder.<DragonMinion>of(DragonMinion::new, MobCategory.MISC)
-                    .sized(0.9f, 0.9f).clientTrackingRange(8).updateInterval(2).noSave().noSummon()
+                    .sized(0.45f, 0.45f).clientTrackingRange(8).updateInterval(2).noSave().noSummon()
                     .build(MOD_ID + ":minion"));
 
     public DragonMountsCompanion(FMLJavaModLoadingContext context) {

@@ -23,7 +23,7 @@ import java.util.WeakHashMap;
 
 @Mod.EventBusSubscriber(modid = DragonMountsCompanion.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
-    private static final float SCALE = 0.34f;
+    private static final float SCALE = 0.17f;
     private static final ResourceLocation MISSING_TEXTURE = ResourceLocation.withDefaultNamespace("missingno");
     private final DragonRenderer dragonRenderer;
     private final Map<DragonMinion, Preview> previews = new WeakHashMap<>();
