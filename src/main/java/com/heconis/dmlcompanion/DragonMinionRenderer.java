@@ -67,6 +67,7 @@ public final class DragonMinionRenderer extends EntityRenderer<DragonMinion> {
         var dragon = preview.dragon;
         dragon.perched = perched;
         dragon.setFlying(!perched);
+        dragon.setInSittingPose(perched);
         dragon.setYRot(yaw);
         dragon.yBodyRotO = dragon.yBodyRot = yaw;
         dragon.yHeadRotO = dragon.yHeadRot = yaw;
