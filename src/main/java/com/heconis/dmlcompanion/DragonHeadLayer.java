@@ -1,6 +1,7 @@
 package com.heconis.dmlcompanion;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -13,6 +14,8 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -53,11 +56,13 @@ public final class DragonHeadLayer extends RenderLayer<AbstractClientPlayer, Pla
         poses.pushPose();
         try {
             var head = getParentModel().head;
-            // Use the head pivot without inheriting its look rotation. The pitched head can expose a higher corner.
-            double headTop = Math.max(8, 8 * Math.cos(head.xRot) + 4 * Math.abs(Math.sin(head.xRot)));
-            double clearance = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 0.75 : 2;
-            // Center DML's torso directly above the head pivot.
-            poses.translate(head.x / 16, (head.y - headTop - clearance) / 16, head.z / 16 + 0.06);
+            float clearance = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 0.75f : 2f;
+            // Rotate the crown offset with the head. Use only the head's yaw for the dragon's orientation.
+            var headRotation = new Quaternionf().rotationZYX(head.zRot, head.yRot, head.xRot);
+            var crown = new Vector3f(0, -(8 + clearance) / 16, 0).rotate(headRotation);
+            poses.translate(head.x / 16 + crown.x, head.y / 16 + crown.y, head.z / 16 + crown.z);
+            poses.mulPose(Axis.YP.rotation(head.yRot));
+            poses.translate(0, 0, 0.06);
             // Undo the player model's axis flip so the dragon renderer receives an upright coordinate system.
             poses.scale(-1, -1, 1);
             renderer.renderOnHead(minion, partialTick, poses, buffers, light);
