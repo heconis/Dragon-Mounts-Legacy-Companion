@@ -106,7 +106,7 @@ final class DragonMinion extends Entity {
     }
 
     private static Vec3 followPosition(Player player, double bob) {
-        var back = Vec3.directionFromRotation(0, player.getYRot()).scale(-1.8);
+        var back = Vec3.directionFromRotation(0, player.getYRot()).scale(-1);
         return player.position().add(back.x, player.getEyeHeight() + 0.18 + bob, back.z);
     }
 
