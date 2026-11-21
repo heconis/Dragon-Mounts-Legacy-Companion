@@ -2,6 +2,8 @@ package com.heconis.dmlcompanion;
 
 import com.github.kay9.dragonmounts.DMLRegistry;
 import com.github.kay9.dragonmounts.dragon.TameableDragon;
+import com.heconis.dmlcompanion.mixin.EntitySectionManagerAccess;
+import com.heconis.dmlcompanion.mixin.ServerLevelEntityAccess;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
@@ -157,7 +159,12 @@ final class DragonStorage {
                 return Result.ADD_FAILED.outcome();
             }
             // Keep the snapshot authoritative until the restored entity has been flushed to its level.
-            level.save(null, true, false);
+            var manager = (EntitySectionManagerAccess) ((ServerLevelEntityAccess) level).dmlcompanion$entityManager();
+            if (!manager.dmlcompanion$storeChunkSections(dragon.chunkPosition().toLong(), entity -> {})) {
+                return Result.STORAGE_ERROR.outcome();
+            }
+            // Drain vanilla's entity writer before verifying the revision on disk.
+            manager.dmlcompanion$permanentStorage().flush(true);
             if (!dragon.isAlive() || level.getEntity(id) != dragon) {
                 return Result.ADD_FAILED.outcome();
             }
@@ -184,7 +191,7 @@ final class DragonStorage {
         if (!Files.isRegularFile(file)) {
             return false;
         }
-        // Vanilla's entity writer can log a failed write without throwing to the caller of level.save().
+        // Vanilla's entity writer may log a failed write without propagating it to the caller.
         try (var region = new RegionFile(file, entityFolder, false);
              var input = region.getChunkDataInputStream(chunk)) {
             if (input == null) {

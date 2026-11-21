@@ -24,6 +24,7 @@ public final class DragonFlight {
     private static final int BOOST_COOLDOWN = 3 * 20;
     private static final String BOOST_ROCKET = DragonMountsCompanion.MOD_ID + ":boost_rocket";
     private static final String SAVED_FLIGHT = DragonMountsCompanion.MOD_ID + ":flight";
+    private static final String LANDING_LOCK = DragonMountsCompanion.MOD_ID + ":awaiting_landing";
     private static final Map<ServerPlayer, Flight> FLIGHTS = new IdentityHashMap<>();
 
     private DragonFlight() {}
@@ -68,7 +69,7 @@ public final class DragonFlight {
                 }
             }
             case START -> {
-                if (flight == null && !player.isFallFlying()) {
+                if (flight == null && !player.isFallFlying() && canStartNewFlight(player.getPersistentData())) {
                     flight = new Flight(minion.dragonId(), now, durationTicks(minion.friendshipLevel()));
                     FLIGHTS.put(player, flight);
                     saveProgress(player, flight);
@@ -169,6 +170,20 @@ public final class DragonFlight {
         }
     }
 
+    // Eligibility for another takeoff belongs to the player, even when no ring is equipped.
+    static void updateLandingLock(CompoundTag data, boolean landedOrDead) {
+        if (landedOrDead) {
+            data.remove(LANDING_LOCK);
+            data.remove(SAVED_FLIGHT);
+        } else if (data.contains(SAVED_FLIGHT, Tag.TAG_COMPOUND) && !data.getBoolean(LANDING_LOCK)) {
+            data.putBoolean(LANDING_LOCK, true);
+        }
+    }
+
+    static boolean canStartNewFlight(CompoundTag data) {
+        return !data.getBoolean(LANDING_LOCK) && !data.contains(SAVED_FLIGHT, Tag.TAG_COMPOUND);
+    }
+
     static void pause(ServerPlayer player) {
         var flight = FLIGHTS.remove(player);
         if (flight != null) {
@@ -200,6 +215,7 @@ public final class DragonFlight {
     private static void saveProgress(ServerPlayer player, Flight flight) {
         var checkpoint = flight.checkpoint(player.server.getTickCount(), player.level().dimension().location().toString());
         player.getPersistentData().put(SAVED_FLIGHT, checkpoint.save());
+        player.getPersistentData().putBoolean(LANDING_LOCK, true);
     }
 
     private static Flight resume(ServerPlayer player, DragonMinion minion) {

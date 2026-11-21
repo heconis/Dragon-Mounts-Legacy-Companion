@@ -95,21 +95,21 @@ final class DragonRingItem extends Item implements ICurioItem {
         }
         var id = tag.getUUID(DRAGON_ID);
         var records = IssuedDragonRings.get(player.server);
-        if (!records.contains(id)) {
-            return;
-        }
-        int ticks = records.friendshipTicks(id);
-        int friendshipLevel = DragonFriendship.levelAt(ticks);
-        int progress = DragonFriendship.progressPercent(ticks);
-        if (tag.getInt(FRIENDSHIP_LEVEL) != friendshipLevel) {
-            tag.putInt(FRIENDSHIP_LEVEL, friendshipLevel);
-        }
-        if (tag.getInt(FRIENDSHIP_PROGRESS) != progress) {
-            tag.putInt(FRIENDSHIP_PROGRESS, progress);
-        }
         CompoundTag info = null;
         try {
             var data = DragonStorageData.get(player.server);
+            if (!records.contains(id)) {
+                return;
+            }
+            int ticks = records.friendshipTicks(id);
+            int friendshipLevel = DragonFriendship.levelAt(ticks);
+            int progress = DragonFriendship.progressPercent(ticks);
+            if (tag.getInt(FRIENDSHIP_LEVEL) != friendshipLevel) {
+                tag.putInt(FRIENDSHIP_LEVEL, friendshipLevel);
+            }
+            if (tag.getInt(FRIENDSHIP_PROGRESS) != progress) {
+                tag.putInt(FRIENDSHIP_PROGRESS, progress);
+            }
             var entry = data.get(id);
             var health = records.healthOf(id);
             String breed = health == null ? "" : health.breed();

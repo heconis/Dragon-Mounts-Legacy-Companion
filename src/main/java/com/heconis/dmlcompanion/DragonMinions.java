@@ -50,6 +50,7 @@ public final class DragonMinions {
     }
 
     private static void refresh(ServerPlayer player, boolean countTime) {
+        DragonFlight.updateLandingLock(player.getPersistentData(), player.onGround() || !player.isAlive());
         if (!player.isAlive() || player.isSpectator()) {
             clear(player);
             return;

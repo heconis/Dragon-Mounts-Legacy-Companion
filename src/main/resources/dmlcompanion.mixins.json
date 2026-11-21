@@ -4,7 +4,8 @@
   "package": "com.heconis.dmlcompanion.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "dmlcompanion.refmap.json",
-  "mixins": ["LivingEntityFlightMixin", "ServerGlideMixin", "DragonPassengerMixin", "DragonFeedingMixin"],
+  "mixins": ["LivingEntityFlightMixin", "ServerGlideMixin", "DragonPassengerMixin", "DragonFeedingMixin",
+    "ServerLevelEntityAccess", "EntitySectionManagerAccess"],
   "client": ["FireworkBoostParticlesMixin", "DragonPassengerCameraMixin"],
   "injectors": {
     "defaultRequire": 1

@@ -19,7 +19,7 @@ public final class DragonStorageDataCheck {
         verifySharedRide();
         Path folder = Files.createTempDirectory(Path.of("."), "dragon-storage-check-");
         Path file = folder.resolve("dragons.dat");
-        Path writeBlocker = file.resolve("blocker");
+        Path records = folder.resolve("dragons.dat.d");
         Path region = folder.resolve("r.-1.0.mca");
         try {
             var data = new DragonStorageData(file);
@@ -50,8 +50,14 @@ public final class DragonStorageDataCheck {
             require(stored.snapshot().equals(snapshot), "The entire snapshot must survive reopening the journal");
             require(stored.minion(), "The minion preference must survive reopening the journal");
             verifyDragonNames(stored);
+            var rings = new IssuedDragonRings();
+            data.reconcileIssuedRings(rings);
+            require(rings.contains(id) && rings.advanceFriendship(id) == 1, "A durable record must repair lost issuance");
+            data.reconcileIssuedRings(rings);
+            require(rings.friendshipTicks(id) == 1 && !rings.recordIssue(id), "Repair must retain progress and prevent reissue");
             verifyRecovery(data, file, id, stored);
-            verifyLegacyStorage(file, id, owner, snapshot);
+            verifyLegacyStorage(folder.resolve("legacy.dat"), id, owner, snapshot);
+            verifyIndependentRecords(file, records, id, owner, snapshot);
             data.commit(id, new DragonStorageData.Active(revision));
             data = new DragonStorageData(file);
             require(data.allowsJoin(id, revision, null), "The committed revision can rejoin");
@@ -63,9 +69,10 @@ public final class DragonStorageDataCheck {
             data = new DragonStorageData(file);
             require(!data.allowsJoin(id, revision, null), "A dead dragon cannot rejoin");
 
-            Files.delete(file);
-            Files.createDirectory(file);
-            Files.createFile(writeBlocker);
+            var recordFile = records.resolve(id + ".dat");
+            Files.delete(recordFile);
+            Files.createDirectory(recordFile);
+            Files.createFile(recordFile.resolve("blocker"));
             try {
                 data.commit(id, new DragonStorageData.Stored(owner, snapshot, true, 14));
                 throw new AssertionError("Replacing a nonempty directory must fail");
@@ -74,12 +81,11 @@ public final class DragonStorageDataCheck {
                         "A failed write must leave the authoritative state intact");
             }
         } finally {
-            if (Files.isDirectory(file)) {
-                Files.deleteIfExists(writeBlocker);
+            try (var paths = Files.walk(folder)) {
+                for (var path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                    Files.delete(path);
+                }
             }
-            Files.deleteIfExists(region);
-            Files.deleteIfExists(file);
-            Files.delete(folder);
         }
         System.out.println("Dragon storage journal checks passed");
     }
@@ -113,6 +119,17 @@ public final class DragonStorageDataCheck {
                 "A boost cooldown must pause offline and resume on login");
         require(loaded.resumeAt(1_000, -1).checkpoint(20_000, dimension).remaining() == -1,
                 "Unlimited flight must remain unlimited after resuming");
+
+        var playerData = new CompoundTag();
+        String key = DragonMountsCompanion.MOD_ID + ":flight";
+        playerData.put(key, saved.save());
+        DragonFlight.updateLandingLock(playerData, false);
+        playerData.remove(key); // Login with the ring removed invalidates resumption.
+        var afterLogin = playerData.copy();
+        DragonFlight.updateLandingLock(afterLogin, false);
+        require(!DragonFlight.canStartNewFlight(afterLogin), "Re-equipping in midair must keep the landing lock");
+        DragonFlight.updateLandingLock(afterLogin, true);
+        require(DragonFlight.canStartNewFlight(afterLogin), "Landing must unlock a fresh flight");
     }
 
     private static void verifyFriendship() {
@@ -216,6 +233,40 @@ public final class DragonStorageDataCheck {
         var restored = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
         require(!restored.minion() && !restored.hasMaxHealth() && restored.snapshot().equals(snapshot),
                 "Storage from 0.2.0 must load without activating a minion");
+        new DragonStorageData(file).commit(id, DragonStorageData.Dead.INSTANCE);
+        require(new DragonStorageData(file).get(id) == DragonStorageData.Dead.INSTANCE,
+                "An individual commit must supersede the legacy snapshot after restart");
+    }
+
+    private static void verifyIndependentRecords(Path file, Path records, UUID id, UUID owner, CompoundTag snapshot)
+            throws IOException {
+        var data = new DragonStorageData(file);
+        var other = UUID.randomUUID();
+        data.commit(other, new DragonStorageData.Active(UUID.randomUUID()));
+        var otherFile = records.resolve(other + ".dat");
+        var sentinel = java.nio.file.attribute.FileTime.fromMillis(100000);
+        Files.setLastModifiedTime(otherFile, sentinel);
+        data.commit(id, new DragonStorageData.Stored(owner, snapshot, true, 14));
+        require(Files.getLastModifiedTime(otherFile).equals(sentinel), "A commit must only write its own record");
+
+        for (String field : new String[]{"Owner", "Revision"}) {
+            var damaged = new CompoundTag();
+            damaged.putString("State", field.equals("Owner") ? "stored" : "active");
+            damaged.put("Snapshot", snapshot);
+            NbtIo.writeCompressed(damaged, otherFile.toFile());
+            var reopened = new DragonStorageData(file);
+            try {
+                reopened.get(other);
+                throw new AssertionError("Missing " + field + " was accepted");
+            } catch (IOException expected) {
+                require(expected.getMessage().contains(field) && expected.getMessage().contains(other.toString()),
+                        "The error must identify both the dragon and the missing field");
+            }
+            require(reopened.get(id) instanceof DragonStorageData.Stored, "Other dragons must stay accessible");
+            var rings = new IssuedDragonRings();
+            reopened.reconcileIssuedRings(rings);
+            require(rings.contains(id) && !rings.contains(other), "Only valid records may recover membership");
+        }
     }
 
     private static void verifySavedRevision(Path folder, Path file, UUID id, UUID revision) throws IOException {

@@ -14,7 +14,7 @@ plugins {
 apply plugin: 'org.spongepowered.mixin'
 
 group = 'com.heconis.dmlcompanion'
-version = '0.5.0-alpha.1'
+version = '0.5.0-alpha.2'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -35,6 +35,14 @@ minecraft {
         server {
             workingDirectory project.file('run-server')
             args '--nogui'
+        }
+        gameTestServer {
+            workingDirectory layout.buildDirectory.dir('game-test-server').get().asFile
+            // Forge filters by the structure template namespace. The test uses the vanilla igloo.
+            property 'forge.enabledGameTestNamespaces', 'minecraft'
+            mods {
+                dmlcompanion { source sourceSets.test }
+            }
         }
     }
 }

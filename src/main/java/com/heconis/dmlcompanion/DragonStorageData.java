@@ -25,21 +25,41 @@ final class DragonStorageData {
     private static final Map<MinecraftServer, DragonStorageData> WORLDS = new WeakHashMap<>();
     private static final String FILE_NAME = DragonMountsCompanion.MOD_ID + "_dragons.dat";
 
-    private final Path file;
+    private final Path recordDirectory;
     private final Map<UUID, Entry> entries = new HashMap<>();
+    private final Map<UUID, IOException> unreadable = new HashMap<>();
     private final Map<UUID, TameableDragon> restoring = new HashMap<>();
 
     static synchronized DragonStorageData get(MinecraftServer server) throws IOException {
         var data = WORLDS.get(server);
         if (data == null) {
             data = new DragonStorageData(server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(FILE_NAME));
+            data.reconcileIssuedRings(IssuedDragonRings.get(server));
             WORLDS.put(server, data);
         }
         return data;
     }
 
-    DragonStorageData(Path file) throws IOException {
-        this.file = file;
+    DragonStorageData(Path legacyFile) throws IOException {
+        recordDirectory = legacyFile.resolveSibling(legacyFile.getFileName() + ".d");
+        readLegacy(legacyFile);
+        // Individual records take precedence over the original, read-only snapshot.
+        try (var files = Files.newDirectoryStream(recordDirectory, "*.dat")) {
+            for (Path file : files) {
+                String name = file.getFileName().toString();
+                UUID id = parseId(name.substring(0, name.length() - 4));
+                try (var input = Files.newInputStream(file)) {
+                    readEntry(id, NbtIo.readCompressed(input));
+                } catch (IOException | RuntimeException failure) {
+                    markUnreadable(id, new IOException("Could not read dragon " + id + " from " + file, failure));
+                }
+            }
+        } catch (NoSuchFileException absent) {
+            // No individual records have been committed yet.
+        }
+    }
+
+    private void readLegacy(Path file) throws IOException {
         CompoundTag root;
         try (var input = Files.newInputStream(file)) {
             root = NbtIo.readCompressed(input);
@@ -52,30 +72,68 @@ final class DragonStorageData {
             throw new IOException("Unknown dragon storage format in " + file);
         }
         var dragons = root.getCompound("Dragons");
-        try {
-            for (String id : dragons.getAllKeys()) {
-                var tag = dragons.getCompound(id);
-                Entry entry = switch (tag.getString("State")) {
-                    case "stored" -> {
-                        if (!tag.contains("Snapshot", Tag.TAG_COMPOUND)) {
-                            throw new IOException("Missing stored dragon snapshot: " + id);
-                        }
-                        float maxHealth = tag.contains("MaxHealth", Tag.TAG_ANY_NUMERIC)
-                                ? tag.getFloat("MaxHealth") : Float.NaN;
-                        yield new Stored(tag.getUUID("Owner"), tag.getCompound("Snapshot"), tag.getBoolean("Minion"), maxHealth);
-                    }
-                    case "active" -> new Active(tag.getUUID("Revision"));
-                    case "dead" -> Dead.INSTANCE;
-                    default -> throw new IOException("Unknown stored dragon state: " + id);
-                };
-                entries.put(UUID.fromString(id), entry);
-            }
-        } catch (IllegalArgumentException malformed) {
-            throw new IOException("Invalid dragon storage entry in " + file, malformed);
+        for (String key : dragons.getAllKeys()) {
+            readEntry(parseId(key), dragons.getCompound(key));
         }
     }
 
-    Entry get(UUID dragonId) {
+    private static UUID parseId(String key) throws IOException {
+        try {
+            return UUID.fromString(key);
+        } catch (IllegalArgumentException malformed) {
+            throw new IOException("Invalid dragon record ID: " + key, malformed);
+        }
+    }
+
+    private void readEntry(UUID id, CompoundTag tag) {
+        try {
+            Entry entry = switch (tag.getString("State")) {
+                case "stored" -> {
+                    if (!tag.contains("Snapshot", Tag.TAG_COMPOUND)) {
+                        throw new IOException("Missing stored dragon snapshot: " + id);
+                    }
+                    float maxHealth = tag.contains("MaxHealth", Tag.TAG_ANY_NUMERIC)
+                            ? tag.getFloat("MaxHealth") : Float.NaN;
+                    UUID owner = requireUuid(tag, "Owner", id);
+                    var snapshot = tag.getCompound("Snapshot");
+                    if (!id.equals(requireUuid(snapshot, "UUID", id)) || !owner.equals(requireUuid(snapshot, "Owner", id))) {
+                        throw new IOException("Snapshot UUID or Owner mismatch for dragon " + id);
+                    }
+                    yield new Stored(owner, snapshot, tag.getBoolean("Minion"), maxHealth);
+                }
+                case "active" -> new Active(requireUuid(tag, "Revision", id));
+                case "dead" -> Dead.INSTANCE;
+                default -> throw new IOException("Unknown stored dragon state: " + id);
+            };
+            entries.put(id, entry);
+            unreadable.remove(id);
+        } catch (IOException failure) {
+            markUnreadable(id, failure);
+        }
+    }
+
+    private static UUID requireUuid(CompoundTag tag, String field, UUID id) throws IOException {
+        if (!tag.hasUUID(field)) {
+            throw new IOException("Missing or invalid " + field + " for dragon " + id);
+        }
+        return tag.getUUID(field);
+    }
+
+    private void markUnreadable(UUID id, IOException failure) {
+        entries.remove(id);
+        unreadable.put(id, failure);
+    }
+
+    void reconcileIssuedRings(IssuedDragonRings rings) {
+        // Every journal entry is evidence of prior issuance. Rebuild membership, never grant a second item.
+        entries.keySet().forEach(rings::recordIssue);
+    }
+
+    Entry get(UUID dragonId) throws IOException {
+        var failure = unreadable.get(dragonId);
+        if (failure != null) {
+            throw failure;
+        }
         return entries.get(dragonId);
     }
 
@@ -91,7 +149,7 @@ final class DragonStorageData {
         restoring.remove(dragon.getUUID(), dragon);
     }
 
-    boolean allowsJoin(UUID id, UUID revision, TameableDragon candidate) {
+    boolean allowsJoin(UUID id, UUID revision, TameableDragon candidate) throws IOException {
         Entry entry = get(id);
         if (entry instanceof Stored) {
             // An old chunk save can still contain a pre-storage entity.
@@ -104,18 +162,13 @@ final class DragonStorageData {
     }
 
     void commit(UUID dragonId, Entry entry) throws IOException {
-        var dragons = new CompoundTag();
-        entries.forEach((id, previous) -> dragons.put(id.toString(), encode(previous)));
-        dragons.put(dragonId.toString(), encode(entry));
-        var root = new CompoundTag();
-        root.putInt("Format", 1);
-        root.put("Dragons", dragons);
-
-        Files.createDirectories(file.getParent());
-        var temporary = Files.createTempFile(file.getParent(), FILE_NAME, ".tmp");
+        get(dragonId); // Do not overwrite an unreadable record.
+        Files.createDirectories(recordDirectory);
+        var file = recordDirectory.resolve(dragonId + ".dat");
+        var temporary = Files.createTempFile(recordDirectory, dragonId.toString(), ".tmp");
         try {
             try (var output = Files.newOutputStream(temporary)) {
-                NbtIo.writeCompressed(root, output);
+                NbtIo.writeCompressed(encode(entry), output);
             }
             try (var channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
                 channel.force(true);
