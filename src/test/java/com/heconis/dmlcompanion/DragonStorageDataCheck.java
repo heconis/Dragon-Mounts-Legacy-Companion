@@ -14,6 +14,9 @@ import java.util.UUID;
 
 public final class DragonStorageDataCheck {
     public static void main(String[] args) throws IOException {
+        verifyFriendship();
+        verifyFlightResume();
+        verifySharedRide();
         Path folder = Files.createTempDirectory(Path.of("."), "dragon-storage-check-");
         Path file = folder.resolve("dragons.dat");
         Path writeBlocker = file.resolve("blocker");
@@ -38,7 +41,7 @@ public final class DragonStorageDataCheck {
             snapshot.putBoolean("Saddle", true);
 
             data.commit(id, new DragonStorageData.Active(previousRevision));
-            data.commit(id, new DragonStorageData.Stored(owner, snapshot, true));
+            data.commit(id, new DragonStorageData.Stored(owner, snapshot, true, 14));
             data = new DragonStorageData(file);
             require(!data.allowsJoin(id, previousRevision, null), "The old entity cannot rejoin after storage");
             require(!data.allowsJoin(id, revision, null), "An uncommitted restoration cannot rejoin");
@@ -47,6 +50,7 @@ public final class DragonStorageDataCheck {
             require(stored.snapshot().equals(snapshot), "The entire snapshot must survive reopening the journal");
             require(stored.minion(), "The minion preference must survive reopening the journal");
             verifyDragonNames(stored);
+            verifyRecovery(data, file, id, stored);
             verifyLegacyStorage(file, id, owner, snapshot);
             data.commit(id, new DragonStorageData.Active(revision));
             data = new DragonStorageData(file);
@@ -63,7 +67,7 @@ public final class DragonStorageDataCheck {
             Files.createDirectory(file);
             Files.createFile(writeBlocker);
             try {
-                data.commit(id, new DragonStorageData.Stored(owner, snapshot, true));
+                data.commit(id, new DragonStorageData.Stored(owner, snapshot, true, 14));
                 throw new AssertionError("Replacing a nonempty directory must fail");
             } catch (IOException expected) {
                 require(data.get(id) == DragonStorageData.Dead.INSTANCE,
@@ -80,11 +84,90 @@ public final class DragonStorageDataCheck {
         System.out.println("Dragon storage journal checks passed");
     }
 
+    private static void verifySharedRide() {
+        var ride = new DragonRiding.RideLink(UUID.randomUUID(), UUID.randomUUID(), "minecraft:the_nether");
+        var saved = ride.save();
+        require(ride.equals(DragonRiding.RideLink.read(saved)),
+                "A rider's save must retain the same dragon, owner and dimension");
+        saved.remove("Owner");
+        require(DragonRiding.RideLink.read(saved) == null, "A ride without its original owner must not resume");
+    }
+
+    private static void verifyFlightResume() {
+        var dragon = UUID.randomUUID();
+        String dimension = "minecraft:overworld";
+        var flight = new DragonFlight.Flight(dragon, 100, DragonFlight.durationTicks(5));
+        var saved = DragonFlight.FlightCheckpoint.read(flight.checkpoint(340, dimension).save());
+        require(saved != null && saved.dragonId().equals(dragon) && saved.dimension().equals(dimension),
+                "The resume record must retain the dragon and dimension");
+        require(saved.mode() == DragonFlight.Mode.FLYING && saved.remaining() == 360,
+                "The flight must save the time remaining at logout");
+        var resumed = saved.resumeAt(10_000, DragonFlight.durationTicks(5));
+        require(resumed.checkpoint(10_000, dimension).remaining() == 360, "Offline time must not count");
+        require(resumed.checkpoint(10_360, dimension).mode() == DragonFlight.Mode.RECOVERY_GLIDE,
+                "The original flight must still expire after resuming");
+
+        var unlimited = new DragonFlight.FlightCheckpoint(dragon, dimension, DragonFlight.Mode.FLYING, -1, 30);
+        var loaded = DragonFlight.FlightCheckpoint.read(unlimited.save());
+        require(loaded != null && loaded.resumeAt(1_000, -1).checkpoint(1_010, dimension).boostCooldown() == 20,
+                "A boost cooldown must pause offline and resume on login");
+        require(loaded.resumeAt(1_000, -1).checkpoint(20_000, dimension).remaining() == -1,
+                "Unlimited flight must remain unlimited after resuming");
+    }
+
+    private static void verifyFriendship() {
+        int[] minutes = {0, 20, 60, 120, 200, 300, 420, 560, 720, 900};
+        for (int level = 1; level <= minutes.length; level++) {
+            int ticks = minutes[level - 1] * 60 * 20;
+            require(DragonFriendship.ticksForLevel(level) == ticks, "Cumulative time must match level " + level);
+            require(DragonFriendship.levelAt(ticks) == level, "The new level must begin at its threshold");
+            if (level > 1) {
+                require(DragonFriendship.levelAt(ticks - 1) == level - 1, "The previous level ends at the threshold");
+                require(DragonFriendship.progressPercent(ticks - 1) == 99, "Progress must not round up early");
+            }
+            if (level < DragonFriendship.MAX_LEVEL) {
+                require(DragonFriendship.progressPercent(ticks) == 0, "Progress must reset at the start of a level");
+            }
+        }
+        require(DragonFriendship.progressPercent(12_000) == 50, "Progress must reflect the current level interval");
+        require(DragonFriendship.progressPercent(DragonFriendship.MAX_TICKS) == 100, "The final level is complete");
+        require(DragonFriendship.riddenFlightSpeedBonus(1) == 0, "Lv1 must keep the original riding speed");
+        require(Math.abs(DragonFriendship.riddenFlightSpeedBonus(5) - 0.4444444444) < 1e-9,
+                "Intermediate levels must increase riding speed gradually");
+        require(DragonFriendship.riddenFlightSpeedBonus(10) == 1, "Lv10 must double the riding speed");
+        require(DragonFlight.MIN_LEVEL == 5, "Flight must unlock at Lv5");
+        require(DragonFlight.durationTicks(5) == 600 && DragonFlight.durationTicks(7) == 600,
+                "Lv5 to Lv7 have thirty seconds of flight");
+        require(DragonFlight.durationTicks(8) == 1200 && DragonFlight.durationTicks(9) == 1200,
+                "Lv8 and Lv9 have sixty seconds of flight");
+        require(DragonFlight.durationTicks(10) == -1, "Lv10 flight has no duration limit");
+
+        var rings = new IssuedDragonRings();
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+        rings.recordIssue(first);
+        rings.recordIssue(second);
+        var legacy = rings.save(new CompoundTag());
+        legacy.remove("FriendshipTicks");
+        rings = IssuedDragonRings.load(legacy);
+        require(rings.friendshipTicks(first) == 0, "Old rings must start at Lv1");
+        rings.advanceFriendship(first);
+        var persisted = rings.save(new CompoundTag());
+        var reloaded = IssuedDragonRings.load(persisted);
+        require(reloaded.friendshipTicks(first) == 1, "Friendship time must survive saving and reloading");
+        require(reloaded.friendshipTicks(second) == 0, "A second dragon must have independent progress");
+        require(reloaded.advanceFriendship(UUID.randomUUID()) == 0, "Unissued rings must not gain friendship");
+
+        persisted.getCompound("FriendshipTicks").putInt(first.toString(), DragonFriendship.MAX_TICKS);
+        reloaded = IssuedDragonRings.load(persisted);
+        require(reloaded.advanceFriendship(first) == DragonFriendship.MAX_TICKS, "Lv10 must stop accumulating time");
+    }
+
     private static void verifyDragonNames(DragonStorageData.Stored stored) {
         require("Ash".equals(stored.dragonName().getString()), "A stored name tag takes priority over the breed");
 
         var snapshot = stored.snapshot().copy();
-        var unnamed = new DragonStorageData.Stored(stored.owner(), snapshot, true);
+        var unnamed = new DragonStorageData.Stored(stored.owner(), snapshot, true, stored.maxHealth());
         snapshot.remove("CustomName");
         require(unnamed.dragonName().getContents() instanceof TranslatableContents translated
                         && translated.getKey().equals("dragon_breed.dragonmounts.fire"),
@@ -94,6 +177,29 @@ public final class DragonStorageDataCheck {
         require(unnamed.dragonName().getContents() instanceof TranslatableContents translated
                         && translated.getKey().equals("dragon_breed.dragonmounts.fire"),
                 "A malformed custom name must fall back to the breed");
+    }
+
+    private static void verifyRecovery(DragonStorageData data, Path file, UUID id,
+                                       DragonStorageData.Stored stored) throws IOException {
+        require(stored.hasMaxHealth() && stored.maxHealth() == 14, "Maximum health must survive reopening");
+        var recovered = stored.recoverOneHealth(stored.maxHealth());
+        require(recovered.snapshot().getFloat("Health") == 13.5f, "One interval must heal exactly one HP");
+        require(stored.snapshot().getFloat("Health") == 12.5f, "Recovery must not mutate the authoritative snapshot");
+        data.commit(id, recovered);
+        var reopened = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
+        require(reopened.snapshot().equals(recovered.snapshot()), "Recovered health must survive reopening");
+        var full = reopened.recoverOneHealth(reopened.maxHealth());
+        require(full.snapshot().getFloat("Health") == 14, "Recovery must stop at maximum health");
+        require(full.recoverOneHealth(full.maxHealth()) == full, "A full dragon needs no write");
+
+        var legacy = new DragonStorageData.Stored(stored.owner(), stored.snapshot(), true, Float.NaN);
+        require(legacy.recoverOneHealth(14).maxHealth() == 14, "A legacy snapshot can retain its resolved maximum");
+        var inactive = new DragonStorageData.Stored(stored.owner(), stored.snapshot(), false, 14);
+        require(inactive.recoverOneHealth(14) == inactive, "Stored dragons outside minion mode must not recover");
+        var zeroHealth = stored.snapshot().copy();
+        zeroHealth.putFloat("Health", 0);
+        var invalid = new DragonStorageData.Stored(stored.owner(), zeroHealth, true, 14);
+        require(invalid.recoverOneHealth(14) == invalid, "A zero-health snapshot must not be revived");
     }
 
     private static void verifyLegacyStorage(Path file, UUID id, UUID owner, CompoundTag snapshot) throws IOException {
@@ -108,7 +214,7 @@ public final class DragonStorageDataCheck {
         root.put("Dragons", dragons);
         NbtIo.writeCompressed(root, file.toFile());
         var restored = (DragonStorageData.Stored) new DragonStorageData(file).get(id);
-        require(!restored.minion() && restored.snapshot().equals(snapshot),
+        require(!restored.minion() && !restored.hasMaxHealth() && restored.snapshot().equals(snapshot),
                 "Storage from 0.2.0 must load without activating a minion");
     }
 

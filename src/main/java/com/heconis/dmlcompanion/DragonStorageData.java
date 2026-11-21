@@ -60,7 +60,9 @@ final class DragonStorageData {
                         if (!tag.contains("Snapshot", Tag.TAG_COMPOUND)) {
                             throw new IOException("Missing stored dragon snapshot: " + id);
                         }
-                        yield new Stored(tag.getUUID("Owner"), tag.getCompound("Snapshot"), tag.getBoolean("Minion"));
+                        float maxHealth = tag.contains("MaxHealth", Tag.TAG_ANY_NUMERIC)
+                                ? tag.getFloat("MaxHealth") : Float.NaN;
+                        yield new Stored(tag.getUUID("Owner"), tag.getCompound("Snapshot"), tag.getBoolean("Minion"), maxHealth);
                     }
                     case "active" -> new Active(tag.getUUID("Revision"));
                     case "dead" -> Dead.INSTANCE;
@@ -137,6 +139,9 @@ final class DragonStorageData {
             tag.putUUID("Owner", stored.owner());
             tag.put("Snapshot", stored.snapshot());
             tag.putBoolean("Minion", stored.minion());
+            if (stored.hasMaxHealth()) {
+                tag.putFloat("MaxHealth", stored.maxHealth());
+            }
         } else if (entry instanceof Active active) {
             tag.putString("State", "active");
             tag.putUUID("Revision", active.revision());
@@ -148,7 +153,25 @@ final class DragonStorageData {
 
     sealed interface Entry permits Stored, Active, Dead {}
 
-    record Stored(UUID owner, CompoundTag snapshot, boolean minion) implements Entry {
+    record Stored(UUID owner, CompoundTag snapshot, boolean minion, float maxHealth) implements Entry {
+        boolean hasMaxHealth() {
+            return Float.isFinite(maxHealth) && maxHealth > 0;
+        }
+
+        Stored recoverOneHealth(float limit) {
+            float current = snapshot.getFloat("Health");
+            if (!minion || !Float.isFinite(limit) || limit <= 0 || !Float.isFinite(current) || current <= 0) {
+                return this;
+            }
+            float recovered = current < limit ? Math.min(current + 1, limit) : current;
+            if (recovered == current) {
+                return hasMaxHealth() ? this : new Stored(owner, snapshot, true, limit);
+            }
+            var updated = snapshot.copy();
+            updated.putFloat("Health", recovered);
+            return new Stored(owner, updated, true, limit);
+        }
+
         Component dragonName() {
             String customName = snapshot.getString("CustomName");
             if (!customName.isEmpty()) {

@@ -1,6 +1,14 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "dmlcompanion:item/dragon_ring"
-  }
+    "layer0": "dmlcompanion:item/dragon_ring",
+    "layer1": "dmlcompanion:item/dragon_ring_gem",
+    "layer2": "dmlcompanion:item/dragon_ring_gem_highlight"
+  },
+  "overrides": [
+    {
+      "predicate": { "dmlcompanion:deceased": 1 },
+      "model": "dmlcompanion:item/dragon_ring_deceased"
+    }
+  ]
 }

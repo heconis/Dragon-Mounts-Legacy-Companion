@@ -28,6 +28,10 @@ final class DragonMinion extends Entity {
             SynchedEntityData.defineId(DragonMinion.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<String> BREED =
             SynchedEntityData.defineId(DragonMinion.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Integer> AIR_MODE =
+            SynchedEntityData.defineId(DragonMinion.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FRIENDSHIP_LEVEL =
+            SynchedEntityData.defineId(DragonMinion.class, EntityDataSerializers.INT);
     private UUID dragonId;
     private Vec3 lerpPosition = Vec3.ZERO;
     private float lerpYaw;
@@ -82,11 +86,43 @@ final class DragonMinion extends Entity {
         return entityData.get(BREED);
     }
 
+    boolean isGliding() {
+        return entityData.get(AIR_MODE) == AirMode.GLIDE.ordinal() || isRecoveryGlide();
+    }
+
+    boolean isRecoveryGlide() {
+        return entityData.get(AIR_MODE) == AirMode.RECOVERY_GLIDE.ordinal();
+    }
+
+    boolean isFlyingWithOwner() {
+        return entityData.get(AIR_MODE) == AirMode.FLIGHT.ordinal();
+    }
+
+    boolean usesAirbornePose() {
+        return entityData.get(AIR_MODE) != AirMode.NONE.ordinal();
+    }
+
+    void setAirMode(AirMode mode) {
+        entityData.set(AIR_MODE, mode.ordinal());
+    }
+
+    int friendshipLevel() {
+        return entityData.get(FRIENDSHIP_LEVEL);
+    }
+
+    void setFriendshipLevel(int level) {
+        entityData.set(FRIENDSHIP_LEVEL, level);
+    }
+
     @Override
     protected void defineSynchedData() {
         entityData.define(OWNER, Optional.empty());
         entityData.define(BREED, "");
+        entityData.define(AIR_MODE, AirMode.NONE.ordinal());
+        entityData.define(FRIENDSHIP_LEVEL, 1);
     }
+
+    enum AirMode { NONE, GLIDE, FLIGHT, RECOVERY_GLIDE }
 
     @Override
     public void tick() {

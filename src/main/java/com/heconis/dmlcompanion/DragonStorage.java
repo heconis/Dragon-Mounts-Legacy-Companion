@@ -58,9 +58,15 @@ final class DragonStorage {
             if (data.isRestoring(id)) {
                 return Result.BUSY.outcome();
             }
-            return entry instanceof DragonStorageData.Stored stored
-                    ? restore(player, id, data, stored)
-                    : minionize(player, id, data);
+            if (entry instanceof DragonStorageData.Stored stored) {
+                var minion = DragonMinions.activeMinion(player);
+                if (minion != null && id.equals(minion.dragonId())
+                        && (minion.isFlyingWithOwner() || minion.isGliding())) {
+                    return Result.AIR_MOVEMENT.outcome();
+                }
+                return restore(player, id, data, stored);
+            }
+            return minionize(player, id, data);
         } catch (IOException | RuntimeException failure) {
             LOGGER.error("Could not change storage state for dragon {}", id, failure);
             return Result.STORAGE_ERROR.outcome();
@@ -112,10 +118,11 @@ final class DragonStorage {
             return Result.INVALID_DATA.outcome();
         }
         var name = dragon.getName();
-        IssuedDragonRings.get(player.server).rememberName(dragon);
-        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, true));
+        IssuedDragonRings.get(player.server).observe(dragon);
+        data.commit(id, new DragonStorageData.Stored(player.getUUID(), snapshot, true, dragon.getMaxHealth()));
+        var outcome = new Outcome(Result.MINION, name, (ServerLevel) dragon.level(), dragon.position());
         dragon.discard();
-        return new Outcome(Result.MINION, name);
+        return outcome;
     }
 
     private static Outcome restore(ServerPlayer player, UUID id, DragonStorageData data,
@@ -163,7 +170,7 @@ final class DragonStorage {
             var name = dragon.getName();
             data.commit(id, new DragonStorageData.Active(revision));
             committed = true;
-            return new Outcome(Result.RESTORED, name);
+            return new Outcome(Result.RESTORED, name, level, dragon.position());
         } finally {
             data.endRestore(dragon);
             if (!committed) {
@@ -193,6 +200,23 @@ final class DragonStorage {
                 }
             }
             return false;
+        }
+    }
+
+    static void recoverMinion(ServerPlayer player, UUID id, DragonStorageData data,
+                              DragonStorageData.Stored stored) throws IOException {
+        float maxHealth = stored.maxHealth();
+        if (!stored.hasMaxHealth()) {
+            // Older snapshots can be loaded without spawning a dragon to recover its actual attributes.
+            var dragon = loadDragon(player.serverLevel(), player.position(), id, stored);
+            if (dragon == null) {
+                return;
+            }
+            maxHealth = dragon.getMaxHealth();
+        }
+        var recovered = stored.recoverOneHealth(maxHealth);
+        if (recovered != stored) {
+            data.commit(id, recovered);
         }
     }
 
@@ -258,7 +282,7 @@ final class DragonStorage {
                 && level.getEntities(dragon, box, entity -> entity instanceof LivingEntity && entity.isAlive()).isEmpty();
     }
 
-    private static List<Entity> findLoaded(MinecraftServer server, UUID id) {
+    static List<Entity> findLoaded(MinecraftServer server, UUID id) {
         var found = new ArrayList<Entity>();
         for (var level : server.getAllLevels()) {
             var entity = level.getEntity(id);
@@ -275,13 +299,13 @@ final class DragonStorage {
     }
 
     enum Result {
-        MINION, RESTORED, NO_RING, UNBOUND, DEAD, BUSY,
+        MINION, RESTORED, NO_RING, UNBOUND, DEAD, BUSY, AIR_MOVEMENT,
         NOT_LOADED, CONFLICT, ATTACHED, INVALID_DATA, NO_SPACE, ADD_FAILED, STORAGE_ERROR;
 
         Outcome outcome() {
-            return new Outcome(this, null);
+            return new Outcome(this, null, null, null);
         }
     }
 
-    record Outcome(Result result, Component dragonName) {}
+    record Outcome(Result result, Component dragonName, ServerLevel level, Vec3 position) {}
 }

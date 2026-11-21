@@ -17,5 +17,5 @@ final class MinionDisplay {
     }
 
     // Keep the old TOML value readable so existing shoulder settings become head settings.
-    enum Mode { FOLLOW, HEAD, HIDDEN, SHOULDER }
+    enum Mode { FOLLOW, HEAD, HIDDEN, SHOULDER, BACK, WINGS }
 }

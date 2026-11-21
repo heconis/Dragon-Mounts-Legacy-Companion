@@ -4,6 +4,8 @@ import com.github.kay9.dragonmounts.dragon.TameableDragon;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -32,11 +34,12 @@ public final class DragonRingEvents {
             }
             var records = IssuedDragonRings.get(server);
             if (alreadyTamed) {
-                records.rememberName(dragon);
+                records.observe(dragon);
             } else if (dragon.isTamedFor(player) && records.recordIssue(dragon.getUUID())) {
-                records.rememberName(dragon);
+                records.observe(dragon);
                 var ring = DragonMountsCompanion.DRAGON_RING.get().bind(dragon, player.getUUID());
                 player.getInventory().placeItemBackInInventory(ring);
+                player.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.55f, 1.15f);
             }
         }));
     }
@@ -45,7 +48,7 @@ public final class DragonRingEvents {
     public static void onDragonTick(LivingEvent.LivingTickEvent event) {
         if (event.getEntity() instanceof TameableDragon dragon && dragon.tickCount % 20 == 0
                 && dragon.isTame() && dragon.level() instanceof ServerLevel level) {
-            IssuedDragonRings.get(level.getServer()).rememberName(dragon);
+            IssuedDragonRings.get(level.getServer()).observe(dragon);
         }
     }
 }
