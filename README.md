@@ -20,9 +20,15 @@ Minecraft 1.20.1、Forge 47.4.10、JDK 17 を使用します。開発時は Grad
 
 ワールドの `data/dmlcompanion_dragons.dat.d/` にはドラゴンごとの状態を保存します。以前の `data/dmlcompanion_dragons.dat` があるワールドでは両方を読み込み、個体別ファイルを優先します。バックアップにはワールドの `data/` ディレクトリも含めてください。
 
+## エンダードラゴン討伐報酬とLootr
+
+Lootrを導入すると、エンダードラゴン討伐後に帰還ポータルの台座に出る卵がLootrチェストに置き換わります。各プレイヤーはチェストの中央にある卵を1個ずつ受け取れます。再召喚の儀式が始まると前回のチェストは消え、次に倒すと新しいチェストが出ます。再討伐時の報酬には Dragon Mounts: Legacy の `replenish_eggs` 設定が適用されます。
+
+連携を使う場合はサーバーと各クライアントに同じLootrを入れます。開発時は `-PwithLootr` を付けて `runGameTestServer` や `runClient` を実行できます。検証対象は [Lootr Forge 0.7.35.94](https://www.curseforge.com/minecraft/mc-mods/lootr/files/7263076) です。
+
 ## 指輪の動作確認
 
-1. [GitHub Releases](https://github.com/heconis/Dragon-Mounts-Legacy-Companion/releases) またはローカルビルドの `build/libs/` から `dragon-mounts-legacy-companion-1.0.0.jar` を入手し、`mods` フォルダーに入れます。すでに導入済みの場合は旧版のJARと差し替えます。マルチプレイではサーバーと各クライアントに同じ版を入れます。
+1. [GitHub Releases](https://github.com/heconis/Dragon-Mounts-Legacy-Companion/releases) またはローカルビルドの `build/libs/` から、このModのJARを入手して `mods` フォルダーに入れます。すでに導入済みの場合は旧版のJARと差し替えます。マルチプレイではサーバーと各クライアントに同じ版を入れます。
 2. 確認済みの指輪があればそのまま使えます。新しく入手する場合は、まだ懐いていないドラゴンにバニラのアメジストの欠片を与えます。全品種で共通です。成功時に指輪が1個手に入ります。インベントリが満杯の場合は足元付近に落ちます。
 3. Curios の Ring スロットに装備します。別のプレイヤーへの指輪の受け渡しと、Ring スロットが複数ある環境で2個目の装備を試すと、装備が拒否されます。
 

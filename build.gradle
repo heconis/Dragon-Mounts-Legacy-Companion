@@ -14,7 +14,7 @@ plugins {
 apply plugin: 'org.spongepowered.mixin'
 
 group = 'com.heconis.dmlcompanion'
-version = '1.0.0'
+version = '1.1.0-alpha.1'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -37,7 +37,9 @@ minecraft {
             args '--nogui'
         }
         gameTestServer {
-            workingDirectory layout.buildDirectory.dir('game-test-server').get().asFile
+            def testDirectory = providers.gradleProperty('withLootr').isPresent()
+                    ? 'game-test-server-lootr' : 'game-test-server'
+            workingDirectory layout.buildDirectory.dir(testDirectory).get().asFile
             // Forge filters by the structure template namespace. The test uses the vanilla igloo.
             property 'forge.enabledGameTestNamespaces', 'minecraft'
             mods {
@@ -58,6 +60,12 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
     implementation fg.deobf('curse.maven:dragon-mounts-legacy-375088:5335579')
     implementation fg.deobf('curse.maven:curios-309927:6418456')
+    def lootr = fg.deobf('curse.maven:lootr-361276:7263076')
+    compileOnly lootr
+    testCompileOnly lootr
+    if (providers.gradleProperty('withLootr').isPresent()) {
+        runtimeOnly lootr
+    }
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
